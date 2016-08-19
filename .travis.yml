@@ -1,13 +1,18 @@
 sudo: required
 language: go
 go:
-- 1.5.4
-- 1.6.2
+- 1.6.3
+- 1.7
 env:
   global:
     - SNAP_PLUGIN_SOURCE=/home/travis/gopath/src/github.com/intelsdi-x/snap-plugin-collector-haproxy
   matrix:
     - TEST=unit
+    - TEST=build
+matrix:
+  exclude:
+  - go: 1.6.3
+    env: TEST=build
 before_install:
 - go get github.com/tools/godep
 - if [ ! -d $SNAP_PLUGIN_SOURCE ]; then mkdir -p $HOME/gopath/src/github.com/intelsdi-x; ln -s $TRAVIS_BUILD_DIR $SNAP_PLUGIN_SOURCE; fi # CI for forks not from intelsdi-x
@@ -15,9 +20,26 @@ install:
 - export TMPDIR=$HOME/tmp
 - mkdir -p $TMPDIR
 - cd $SNAP_PLUGIN_SOURCE # change dir into source
-- make deps
+- make
 script:
 - make check TEST=$TEST 2>&1 # Run test suite
 notifications:
   slack:
     secure: VkbZLIc2RH8yf3PtIAxUNPdAu3rQQ7yQx0GcK124JhbEnZGaHyK615V0rbG7HcVmYKGPdB0cXqZiLBDKGqGKb2zR1NepOe1nF03jxGSpPq8jIFeEXSJGEYGL34ScDzZZGuG6qwbjFcXiW5lqn6t8igzp7v2+URYBaZo5ktCS2xY=
+before_deploy:
+- "./scripts/pre_deploy.sh"
+deploy:
+  provider: s3
+  access_key_id: AKIAINMB43VSSPFZISAA
+  secret_access_key:
+    secure: dHvHBV6L8QxP7Hhw+rhf+UZww/p+2K8e3wdN6U10/8lJIsB/z91j0Ti4Xy1a07c6L9JT9J2vBkeruKCMoYYFAgUoafExQfsFOfYhkJRsH2KyBi7dnt2Bvez4nYnVDN+2Caj8umV5rpFx7aH1l0DcpogO+WyzAGWEmHkg2NA0V9evqjNQRuZOdu83W6dp0woauOXCHcMkkm/uVBRAhsphz7seHPiRj4xqT8R8dSC50UPCgixc6yYVPAL6x9dlFZ42KwQ12C68Fs6m0SJdLl+0JJgepM1KyMk+/ee8mqp3CQK5GitqqbmrH0MDcFZTGH6EJ4wY1sxPGzuKHLBf4wp18oRDYUBRFnm3R2D5z3nZF3VEnHQh9HfkSGgeRzKH7/OjB+1Ew6yJPMeAmhQChcP4oRs6lYDNuoLplY0nx1rWstdodh+BH6sxsOx+IMtWOHDGYAm5zbDgm4Qil1McerjOyEuF9EzHfPzn+CpFyKm19WxUYZkvakgtCYGq5euXMUD+w473dQKCEtHQjCaGRv7YyC3fa4s0f5eNvZUPzh+i3T1sLneaguyh52fvFksfPtRyndovWPa2xV1pw5d0MufdhfxPO/4Wi5umsn5ERJMEHvVuDPX5d0BavFkFfhXbmac1CGlFZKKhKAtx2zMM/atlVevpbNPScCdFijoYY9Y0u9k=
+  bucket: snap.ci.snap-telemetry.io
+  region: us-west-2
+  skip_cleanup: true
+  local-dir: build
+  upload-dir: snap-plugin-collector-haproxy
+  acl: public_read
+  on:
+    repo: jcooklin/snap-plugin-collector-haproxy
+    branch: tb/adds-travis-deploy
+    condition: $TEST = build && $TRAVIS_GO_VERSION = "1.7"
